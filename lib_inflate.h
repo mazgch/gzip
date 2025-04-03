@@ -30,18 +30,16 @@
 extern "C" {
 #endif
 
-// UBLOX stuff 
+// UBLOX stuff / config
 #define ASSERT(x) // dont use
 #define U4 unsigned int
 #define U2 unsigned short
 #define U1 unsigned char
-#define lib_crc32 lib_inflate_crc32
+//#define lib_crc32 lib_inflate_crc32
 #define I int
 #define READ_U2(p) (*(U2*)(p))
 #define READ_U4(p) (*(U4*)(p))
-
-
-#define LIB_INFLATE_CRC_ENABLED
+//#define LIB_INFLATE_CRC_ENABLED
 
 /**
  * Status codes returned.
