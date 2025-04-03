@@ -68,7 +68,8 @@ typedef enum {
  * @param len size of compressed data
  * @return `SUCCESS` on success, error code on error
  */
-lib_inflate_error_code lib_inflate_uncompress(void *pDest, U4 *pLen,
+lib_inflate_error_code lib_inflate_uncompress(
+                            void *pDest, U4 *pLen,
                             const void *pSrc, U4 len);
 
 /**
