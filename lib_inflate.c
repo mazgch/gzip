@@ -832,3 +832,22 @@ U4 lib_inflate_gzip_size(const void *pSrc, U4 len) {
 	const U1 *src = (const U1 *) pSrc;
 	return READ_U4(&src[len - 4]);
 }
+
+lib_inflate_error_code lib_inflate_gzipromExecute(void *pDest, const void *pSrc, U4 len) {
+  const U4 destSize = lib_inflate_gzip_size(pSrc, len);
+  U4 decSize = destSize;
+#if defined(LIB_INFLATE_CRC_ENABLED) || defined(LIB_INFLATE_ERROR_ENABLED)
+  lib_inflate_error_code res =
+#endif
+  lib_inflate_gzip_uncompress(pDest, &decSize, pSrc, len);
+  if (
+#if defined(LIB_INFLATE_CRC_ENABLED) || defined(LIB_INFLATE_ERROR_ENABLED)
+    (res == LIB_INFLATE_SUCCESS) &&
+#endif
+    (decSize == destSize)) {
+    EXECUTE(pDest);
+  }
+#if defined(LIB_INFLATE_CRC_ENABLED) || defined(LIB_INFLATE_ERROR_ENABLED)
+  return res;
+#endif
+}

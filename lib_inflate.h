@@ -32,6 +32,7 @@ extern "C" {
 
 // UBLOX stuff / config
 #define ASSERT(x) // dont use
+#define EXECUTE(p)
 #define UNUSED(v) (void)v
 #define U4 unsigned int
 #define U2 unsigned short
@@ -118,6 +119,16 @@ lib_inflate_error_code lib_inflate_gzip_uncompress(
  * @return the size of the uncompressed data
  */
 U4 lib_inflate_gzip_size(const void *pSrc, U4 len);
+
+/**
+ * execute a gziped image
+ *
+ * @param pDest pointer to where to place decompressed data and execute it
+ * @param pSrc pointer to compressed data
+ * @param iSrc size of compressed data
+ * @return the size of the uncompressed data
+ */
+ lib_inflate_error_code lib_inflate_gzipromExecute(void *pDest, const void *pSrc, U4 len);
 
 #ifdef __cplusplus
 } // extern "C"
