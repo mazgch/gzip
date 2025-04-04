@@ -1,4 +1,5 @@
-![image](https://github.com/user-attachments/assets/368e8b1d-86d4-4843-ad0f-8f177682d685)
+![image](https://github.com/user-attachments/assets/84b5f198-ac7f-47f3-881a-835633b1d599)
+
 
 ```
 03:21:40.012 -> HTTP UBLOX GUNZIP with  ERROR CRC
