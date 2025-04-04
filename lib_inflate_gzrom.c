@@ -6,7 +6,7 @@
 
 // copy the rom file in here using 
 // hexdump -v  -e '"  /*%08.8_ax*/ "' -e' 16/1 "0x%02x, "  ' -e '"\n"' Downloads/sample-5.gz
-static U1 lib_inflate_gzromFile[] = {
+const U1 lib_inflate_gzromFile[] = {
   
   // Here you put your gziped image - this here is not a real ROM here ...
 
@@ -34,5 +34,5 @@ static U1 lib_inflate_gzromFile[] = {
   /*00000150*/ 0xb5, 0x1a, 0xff, 0x41, 0x00, 0x3d, 0x69, 0xf2, 0x20, 0xa1, 0xfd, 0x79, 0xeb, 0xc5, 0x14, 0xcb,
   /*00000160*/ 0xbb, 0x45, 0xfe, 0xec, 0xe5, 0x27, 0x25, 0xff, 0x3c, 0x7e, 0x14, 0x02, 0x00, 0x00
 };
-const U4 lib_inflate_gzromFile = sizeof(gzipRom); // place this first
+const U4 lib_inflate_gzromSize = sizeof(lib_inflate_gzromFile); // place this first
  

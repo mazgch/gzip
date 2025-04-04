@@ -61,7 +61,7 @@ void setup()
       iCompressedSize = 0;
       if (!url) {
         iCompressedSize = lib_inflate_gzromSize;
-        pCompressed = lib_inflate_gzromFile;
+        pCompressed = (uint8_t *)lib_inflate_gzromFile;
       } else {
         Serial.printf("GET %s\n", url);
         http.begin(url);

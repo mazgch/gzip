@@ -30,6 +30,7 @@
 extern "C" {
 #endif
 
+#if 1
 // UBLOX stuff / config
 #define ASSERT(x) // dont use
 #define EXECUTE(p)
@@ -41,6 +42,8 @@ extern "C" {
 #define READ_U2(p) (*(U2*)(p))
 #define READ_U4(p) (*(U4*)(p))
 #define lib_crc32 lib_inflate_crc32
+#endif
+
 #define LIB_INFLATE_CRC_ENABLED
 #define LIB_INFLATE_ERROR_ENABLED
 
@@ -129,6 +132,9 @@ U4 lib_inflate_gzip_size(const void *pSrc, U4 len);
  * @return the size of the uncompressed data
  */
  lib_inflate_error_code lib_inflate_gzipromExecute(void *pDest, const void *pSrc, U4 len);
+
+extern const U4 lib_inflate_gzromSize;
+extern const U1 lib_inflate_gzromFile[];
 
 #ifdef __cplusplus
 } // extern "C"
