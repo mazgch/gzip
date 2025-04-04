@@ -1,3 +1,5 @@
+![image](https://github.com/user-attachments/assets/368e8b1d-86d4-4843-ad0f-8f177682d685)
+
 ```
 03:21:40.012 -> HTTP UBLOX GUNZIP with  ERROR CRC
 03:21:40.077 -> Connecting to wifi..
@@ -39,3 +41,4 @@
 03:20:43.096 -> GET https://raw.githubusercontent.com/mazgch/gzip/refs/heads/main/tinf-master.zip.gz
 03:20:44.844 -> Uncompressed 10 times compressed 39048B uncompressed 41400B in 597ms = 654kB/s
 ```
+
