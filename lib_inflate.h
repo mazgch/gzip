@@ -32,26 +32,45 @@ extern "C" {
 
 // UBLOX stuff / config
 #define ASSERT(x) // dont use
+#define UNUSED(v) (void)v
 #define U4 unsigned int
 #define U2 unsigned short
 #define U1 unsigned char
-//#define lib_crc32 lib_inflate_crc32
 #define I int
 #define READ_U2(p) (*(U2*)(p))
 #define READ_U4(p) (*(U4*)(p))
-//#define LIB_INFLATE_CRC_ENABLED
+#define lib_crc32 lib_inflate_crc32
+#define LIB_INFLATE_CRC_ENABLED
+#define LIB_INFLATE_ERROR_ENABLED
 
 /**
  * Status codes returned.
  *
  * @see lib_inflate_uncompress, lib_inflate_gzip_uncompress, lib_inflate_zlib_uncompress
  */
+#if defined(LIB_INFLATE_CRC_ENABLED) || defined(LIB_INFLATE_ERROR_ENABLED)
 typedef enum {
-	SUCCESS                =  0, //*< Success
+	LIB_INFLATE_SUCCESS    =  0, //*< Success
+#ifdef LIB_INFLATE_CRC_ENABLED
+  LIB_INFLATE_CRC_ERROR  = -3, //*< Checksum error
+#endif
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	LIB_INFLATE_DATA_ERROR = -3, //*< Input error
-  LIB_INFLATE_CRC_ERROR  = -4, //*< Checksum error
 	LIB_INFLATE_BUF_ERROR  = -5, //*< Not enough room for output
+#endif
 } lib_inflate_error_code;
+#else
+#define lib_inflate_error_code void
+#define LIB_INFLATE_SUCCESS
+#endif
+
+#ifdef LIB_INFLATE_ERROR_ENABLED
+ #define lib_inflate_data_error_code  lib_inflate_error_code
+ #define LIB_INFLATE_DATA_SUCCESS      LIB_INFLATE_SUCCESS
+#else 
+ #define lib_inflate_data_error_code void 
+ #define LIB_INFLATE_DATA_SUCCESS
+#endif
 
 /**
  * Decompress `len` bytes of deflate data from `pSrc` to `pDest`.
@@ -68,7 +87,7 @@ typedef enum {
  * @param len size of compressed data
  * @return `SUCCESS` on success, error code on error
  */
-lib_inflate_error_code lib_inflate_uncompress(
+lib_inflate_data_error_code lib_inflate_uncompress(
                             void *pDest, U4 *pLen,
                             const void *pSrc, U4 len);
 

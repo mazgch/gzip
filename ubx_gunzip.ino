@@ -39,7 +39,15 @@ void setup()
   WiFiClient * stream;
   Serial.begin(115200);
   delay(2000); // give a moment for serial to start
-  Serial.println("HTTP UBLOX GUNZIP Example");
+  Serial.println(
+    "HTTP UBLOX GUNZIP with "
+#ifdef LIB_INFLATE_ERROR_ENABLED
+      " ERROR"
+#endif
+#ifdef LIB_INFLATE_CRC_ENABLED 
+      " CRC"
+#endif
+    );
   // Connect to wifi
   WiFi.begin(SSID, PW);
   iTimeout = 0;
@@ -106,23 +114,39 @@ void setup()
           {
             unsigned long startTime = millis();
             unsigned int decSize = iUncompressedSize;
-            lib_inflate_error_code res = SUCCESS;
+#if defined(LIB_INFLATE_CRC_ENABLED) || defined(LIB_INFLATE_ERROR_ENABLED)
+            lib_inflate_error_code res;
+#endif
             int n = 0;
             do { 
-              res = lib_inflate_gzip_uncompress(pUncompressed, &decSize, pCompressed, iCompressedSize);
-            } while ((++n < 10)  && (res == SUCCESS));
+#if defined(LIB_INFLATE_CRC_ENABLED) || defined(LIB_INFLATE_ERROR_ENABLED)
+              res = 
+#endif
+              lib_inflate_gzip_uncompress(pUncompressed, &decSize, pCompressed, iCompressedSize);
+            } while ((++n < 10)  
+#if defined(LIB_INFLATE_CRC_ENABLED) || defined(LIB_INFLATE_ERROR_ENABLED)
+              && (res == LIB_INFLATE_SUCCESS)
+#endif
+            );
             unsigned long deltaTime = millis() - startTime;
       #ifndef STATIC
             free(pUncompressed);
       #endif
-            Serial.printf("Uncompressed %d times %d=%s compressed %dB uncompressed %dB in %ldms = %ldkB/s\n", n, res, 
+            Serial.printf(
+#if defined(LIB_INFLATE_CRC_ENABLED) || defined(LIB_INFLATE_ERROR_ENABLED)
+                "Uncompressed %d times %d=%s compressed %dB uncompressed %dB in %ldms = %ldkB/s\n", n, res,
+#ifdef LIB_INFLATE_ERROR_ENABLED
                 (res == LIB_INFLATE_DATA_ERROR) ? "DATA_ERR" : 
                 (res == LIB_INFLATE_BUF_ERROR) ? "BUF_ERR" :
+#endif
 #ifdef LIB_INFLATE_CRC_ENABLED 
                 (res == LIB_INFLATE_CRC_ERROR) ? "CRC_ERR" : 
 #endif
-                (res == SUCCESS) ? "OK" : "?", 
-                iCompressedSize, decSize, deltaTime, (iCompressedSize * n) / deltaTime);
+                (res == LIB_INFLATE_SUCCESS) ? "OK" : "?",
+#else
+                "Uncompressed %d times compressed %dB uncompressed %dB in %ldms = %ldkB/s\n", n, 
+#endif
+                 iCompressedSize, decSize, deltaTime, (iCompressedSize * n) / deltaTime);
           }
           else {
             Serial.printf("Not enough memory for %d\n", iUncompressedSize);

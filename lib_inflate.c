@@ -1,4 +1,6 @@
 
+
+
 /*
  * tinf - tiny inflate library (inflate, gzip, zlib)
  *
@@ -125,8 +127,9 @@ static void lib_inflate_build_fixed_trees(struct lib_inflate_tree *lt, struct li
 }
 
 // Given an array of code lengths, build a tree 
-static I lib_inflate_build_tree(struct lib_inflate_tree *t, const U1 *lengths,
-                           U4 num)
+static lib_inflate_data_error_code lib_inflate_build_tree(
+													struct lib_inflate_tree *t, const U1 *lengths,
+                          U4 num)
 {
 	U2 offs[16];
 	U4 i, num_codes, available;
@@ -154,22 +157,25 @@ static I lib_inflate_build_tree(struct lib_inflate_tree *t, const U1 *lengths,
 		U4 used = t->counts[i];
 
 		// Check length contains no more codes than available 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 		if (used > available) {
 			return LIB_INFLATE_DATA_ERROR;
 		}
+#endif
 		available = 2 * (available - used);
 
 		offs[i] = num_codes;
 		num_codes += used;
 	}
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	// Check all codes were used, or for the special case of only one
 	// code that it has length 1
-	 
 	if ((num_codes > 1 && available > 0)
 	 || (num_codes == 1 && t->counts[1] != 1)) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
+#endif
 
 	// Fill in symbols sorted by code 
 	for (i = 0; i < num; ++i) {
@@ -186,7 +192,7 @@ static I lib_inflate_build_tree(struct lib_inflate_tree *t, const U1 *lengths,
 		t->symbols[1] = t->max_sym + 1;
 	}
 
-	return SUCCESS;
+	return LIB_INFLATE_DATA_SUCCESS;
 }
 
 // -- Decode functions -- 
@@ -276,8 +282,10 @@ static I lib_inflate_decode_symbol(struct lib_inflate_data *d, const struct lib_
 }
 
 // Given a data stream, decode dynamic trees from it 
-static I lib_inflate_decode_trees(struct lib_inflate_data *d, struct lib_inflate_tree *lt,
-                             struct lib_inflate_tree *dt)
+static lib_inflate_data_error_code lib_inflate_decode_trees(
+														struct lib_inflate_data *d, 
+														struct lib_inflate_tree *lt,
+                            struct lib_inflate_tree *dt)
 {
 	U1 lengths[288 + 32];
 
@@ -289,8 +297,9 @@ static I lib_inflate_decode_trees(struct lib_inflate_data *d, struct lib_inflate
 
 	U4 hlit, hdist, hclen;
 	U4 i, num, length;
-	I res;
-
+#ifdef LIB_INFLATE_ERROR_ENABLED
+	lib_inflate_data_error_code res;
+#endif
 	// Get 5 bits HLIT (257-286) 
 	hlit = lib_inflate_getbits_base(d, 5, 257);
 
@@ -300,6 +309,7 @@ static I lib_inflate_decode_trees(struct lib_inflate_data *d, struct lib_inflate
 	// Get 4 bits HCLEN (4-19) 
 	hclen = lib_inflate_getbits_base(d, 4, 4);
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	/*
 	 * The RFC limits the range of HLIT to 286, but lists HDIST as range
 	 * 1-32, even though distance codes 30 and 31 have no meaning. While
@@ -312,6 +322,7 @@ static I lib_inflate_decode_trees(struct lib_inflate_data *d, struct lib_inflate
 	if (hlit > 286 || hdist > 30) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
+#endif
 
 	for (i = 0; i < 19; ++i) {
 		lengths[i] = 0;
@@ -326,9 +337,13 @@ static I lib_inflate_decode_trees(struct lib_inflate_data *d, struct lib_inflate
 	}
 
 	// Build code length tree (in literal/length tree to save space) 
-	res = lib_inflate_build_tree(lt, lengths, 19);
+#ifdef LIB_INFLATE_ERROR_ENABLED
+	res = 
+#endif
+	lib_inflate_build_tree(lt, lengths, 19);
 
-	if (res != SUCCESS) {
+#ifdef LIB_INFLATE_ERROR_ENABLED
+	if (res != LIB_INFLATE_DATA_SUCCESS) {
 		return res;
 	}
 
@@ -336,21 +351,26 @@ static I lib_inflate_decode_trees(struct lib_inflate_data *d, struct lib_inflate
 	if (lt->max_sym == -1) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
+#endif
 
 	// Decode code lengths for the dynamic trees 
 	for (num = 0; num < hlit + hdist; ) {
 		I sym = lib_inflate_decode_symbol(d, lt);
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 		if (sym > lt->max_sym) {
 			return LIB_INFLATE_DATA_ERROR;
 		}
+#endif
 
 		switch (sym) {
 		case 16:
 			// Copy previous code length 3-6 times (read 2 bits) 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 			if (num == 0) {
 				return LIB_INFLATE_DATA_ERROR;
 			}
+#endif
 			sym = lengths[num - 1];
 			length = lib_inflate_getbits_base(d, 2, 3);
 			break;
@@ -370,41 +390,52 @@ static I lib_inflate_decode_trees(struct lib_inflate_data *d, struct lib_inflate
 			break;
 		}
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 		if (length > hlit + hdist - num) {
 			return LIB_INFLATE_DATA_ERROR;
 		}
+#endif
 
 		while (length--) {
 			lengths[num++] = sym;
 		}
 	}
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	// Check EOB symbol is present 
 	if (lengths[256] == 0) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
 
 	// Build dynamic trees 
-	res = lib_inflate_build_tree(lt, lengths, hlit);
-
-	if (res != SUCCESS) {
+	res = 
+#endif
+	lib_inflate_build_tree(lt, lengths, hlit);
+#ifdef LIB_INFLATE_ERROR_ENABLED
+	if (res != LIB_INFLATE_SUCCESS) {
 		return res;
 	}
 
-	res = lib_inflate_build_tree(dt, lengths + hlit, hdist);
+	res = 
+#endif
+	lib_inflate_build_tree(dt, lengths + hlit, hdist);
 
-	if (res != SUCCESS) {
+#ifdef LIB_INFLATE_ERROR_ENABLED
+	if (res != LIB_INFLATE_DATA_SUCCESS) {
 		return res;
 	}
 
-	return SUCCESS;
+	return LIB_INFLATE_DATA_SUCCESS;
+#endif
 }
 
 // -- Block inflate functions -- 
 
 // Given a stream and two trees, inflate a block of data 
-static I lib_inflate_inflate_block_data(struct lib_inflate_data *d, struct lib_inflate_tree *lt,
-                                   struct lib_inflate_tree *dt)
+static lib_inflate_data_error_code lib_inflate_inflate_block_data(
+																	struct lib_inflate_data *d, 
+																	struct lib_inflate_tree *lt,
+                                  struct lib_inflate_tree *dt)
 {
 	// Extra bits and base tables for length codes 
 	static const U1 length_bits[30] = {
@@ -435,15 +466,18 @@ static I lib_inflate_inflate_block_data(struct lib_inflate_data *d, struct lib_i
 	for (;;) {
 		I sym = lib_inflate_decode_symbol(d, lt);
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 		// Check for overflow in bit reader 
 		if (d->overflow) {
 			return LIB_INFLATE_DATA_ERROR;
 		}
-
+#endif
 		if (sym < 256) {
+#ifdef LIB_INFLATE_ERROR_ENABLED
 			if (d->dest == d->dest_end) {
 				return LIB_INFLATE_BUF_ERROR;
 			}
+#endif
 			*d->dest++ = sym;
 		}
 		else {
@@ -452,14 +486,15 @@ static I lib_inflate_inflate_block_data(struct lib_inflate_data *d, struct lib_i
 
 			// Check for end of block 
 			if (sym == 256) {
-				return SUCCESS;
+				return LIB_INFLATE_DATA_SUCCESS;
 			}
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 			// Check sym is within range and distance tree is not empty 
 			if (sym > lt->max_sym || sym - 257 > 28 || dt->max_sym == -1) {
 				return LIB_INFLATE_DATA_ERROR;
 			}
-
+#endif
 			sym -= 257;
 
 			// Possibly get more bits from length code 
@@ -468,15 +503,17 @@ static I lib_inflate_inflate_block_data(struct lib_inflate_data *d, struct lib_i
 
 			dist = lib_inflate_decode_symbol(d, dt);
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 			// Check dist is within range 
 			if (dist > dt->max_sym || dist > 29) {
 				return LIB_INFLATE_DATA_ERROR;
 			}
-
+#endif
 			// Possibly get more bits from distance code 
 			offs = lib_inflate_getbits_base(d, dist_bits[dist],
 			                         dist_base[dist]);
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 			if (offs > d->dest - d->dest_start) {
 				return LIB_INFLATE_DATA_ERROR;
 			}
@@ -484,7 +521,7 @@ static I lib_inflate_inflate_block_data(struct lib_inflate_data *d, struct lib_i
 			if (d->dest_end - d->dest < length) {
 				return LIB_INFLATE_BUF_ERROR;
 			}
-
+#endif
 			// Copy match 
 			for (i = 0; i < length; ++i) {
 				d->dest[i] = d->dest[i - offs];
@@ -496,17 +533,20 @@ static I lib_inflate_inflate_block_data(struct lib_inflate_data *d, struct lib_i
 }
 
 // Inflate an uncompressed block of data 
-static I lib_inflate_inflate_uncompressed_block(struct lib_inflate_data *d)
+static lib_inflate_data_error_code lib_inflate_inflate_uncompressed_block(struct lib_inflate_data *d)
 {
-	U4 length, invlength;
+	U4 length;
+#ifdef LIB_INFLATE_ERROR_ENABLED
+	U4 invlength;
 
 	if (d->source_end - d->source < 4) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
-
+#endif
 	// Get length 
 	length = READ_U2(d->source);
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	// Get one's complement of length 
 	invlength = READ_U2(d->source + 2);
 
@@ -514,9 +554,10 @@ static I lib_inflate_inflate_uncompressed_block(struct lib_inflate_data *d)
 	if (length != (~invlength & 0x0000FFFF)) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
-
+#endif
 	d->source += 4;
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	if (d->source_end - d->source < length) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
@@ -524,7 +565,7 @@ static I lib_inflate_inflate_uncompressed_block(struct lib_inflate_data *d)
 	if (d->dest_end - d->dest < length) {
 		return LIB_INFLATE_BUF_ERROR;
 	}
-
+#endif
 	// Copy block 
 	while (length--) {
 		*d->dest++ = *d->source++;
@@ -534,11 +575,11 @@ static I lib_inflate_inflate_uncompressed_block(struct lib_inflate_data *d)
 	d->tag = 0;
 	d->bitcount = 0;
 
-	return SUCCESS;
+	return LIB_INFLATE_DATA_SUCCESS;
 }
 
 // Inflate a block of data compressed with fixed Huffman trees 
-static I lib_inflate_inflate_fixed_block(struct lib_inflate_data *d)
+static lib_inflate_data_error_code lib_inflate_inflate_fixed_block(struct lib_inflate_data *d)
 {
 	// Build fixed Huffman trees 
 	lib_inflate_build_fixed_trees(&d->ltree, &d->dtree);
@@ -548,15 +589,18 @@ static I lib_inflate_inflate_fixed_block(struct lib_inflate_data *d)
 }
 
 // Inflate a block of data compressed with dynamic Huffman trees 
-static I lib_inflate_inflate_dynamic_block(struct lib_inflate_data *d)
+static lib_inflate_data_error_code lib_inflate_inflate_dynamic_block(struct lib_inflate_data *d)
 {
 	// Decode trees from stream 
-	I res = lib_inflate_decode_trees(d, &d->ltree, &d->dtree);
-
-	if (res != SUCCESS) {
+#ifdef LIB_INFLATE_ERROR_ENABLED
+	lib_inflate_data_error_code res = 
+#endif
+	lib_inflate_decode_trees(d, &d->ltree, &d->dtree);
+#ifdef LIB_INFLATE_ERROR_ENABLED
+	if (res != LIB_INFLATE_SUCCESS) {
 		return res;
 	}
-
+#endif
 	// Decode block using decoded trees 
 	return lib_inflate_inflate_block_data(d, &d->ltree, &d->dtree);
 }
@@ -564,7 +608,7 @@ static I lib_inflate_inflate_dynamic_block(struct lib_inflate_data *d)
 // EXTERNAL Library API 
 
 // Inflate stream from source to dest 
-lib_inflate_error_code lib_inflate_uncompress(
+lib_inflate_data_error_code lib_inflate_uncompress(
 										void *pDest, U4 *pLen,
                     const void *pSrc, U4 len)
 {
@@ -584,7 +628,9 @@ lib_inflate_error_code lib_inflate_uncompress(
 
 	do {
 		U4 btype;
-		I res;
+#ifdef LIB_INFLATE_ERROR_ENABLED
+		lib_inflate_data_error_code res;
+#endif
 
 		// Read final block flag 
 		bfinal = lib_inflate_getbits(&d, 1);
@@ -596,31 +642,46 @@ lib_inflate_error_code lib_inflate_uncompress(
 		switch (btype) {
 		case 0:
 			// Decompress uncompressed block 
-			res = lib_inflate_inflate_uncompressed_block(&d);
+#ifdef LIB_INFLATE_ERROR_ENABLED
+			res = 
+#endif
+			lib_inflate_inflate_uncompressed_block(&d);
 			break;
 		case 1:
 			// Decompress block with fixed Huffman trees 
-			res = lib_inflate_inflate_fixed_block(&d);
+#ifdef LIB_INFLATE_ERROR_ENABLED
+			res = 
+#endif
+			lib_inflate_inflate_fixed_block(&d);
 			break;
 		case 2:
 			// Decompress block with dynamic Huffman trees 
-			res = lib_inflate_inflate_dynamic_block(&d);
+#ifdef LIB_INFLATE_ERROR_ENABLED
+			res = 
+#endif
+			lib_inflate_inflate_dynamic_block(&d);
 			break;
+#ifdef LIB_INFLATE_ERROR_ENABLED
 		default:
 			res = LIB_INFLATE_DATA_ERROR;
 			break;
+#endif
 		}
-		if (res != SUCCESS) {
+#ifdef LIB_INFLATE_ERROR_ENABLED
+		if (res != LIB_INFLATE_SUCCESS) {
 			return res;
 		}
+#endif
 	} while (!bfinal);
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	// Check for overflow in bit reader 
 	if (d.overflow) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
+#endif
 	*pLen = d.dest - d.dest_start;
-	return SUCCESS;
+	return LIB_INFLATE_DATA_SUCCESS;
 }
 
 lib_inflate_error_code lib_inflate_gzip_uncompress(
@@ -630,15 +691,20 @@ lib_inflate_error_code lib_inflate_gzip_uncompress(
 	const U1 *src = (const U1 *) pSrc;
 	U1 *dst = (U1 *) pDest;
 	const U1 *start;
+#if defined(LIB_INFLATE_ERROR_ENABLED) || defined(LIB_INFLATE_CRC_ENABLED)
 	U4 dlen;
+#endif
 #ifdef LIB_INFLATE_CRC_ENABLED
 	U4 crc32;
 #endif
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	lib_inflate_error_code res;
+#endif
 	tinf_gzip_flag flg;
 
 	// -- Check header -- 
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	// Check room for at least 10 byte header and 8 byte trailer 
 	if (len < 18) {
 		return LIB_INFLATE_DATA_ERROR;
@@ -653,14 +719,17 @@ lib_inflate_error_code lib_inflate_gzip_uncompress(
 	if (src[2] != 8) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
+#endif
 
 	// Get flag byte 
 	flg = src[3];
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	// Check that reserved bits are zero 
 	if (flg & 0xE0) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
+#endif
 
 	// -- Find start of compressed data -- 
 
@@ -669,27 +738,33 @@ lib_inflate_error_code lib_inflate_gzip_uncompress(
 	// Skip extra data if present 
 	if (flg & FEXTRA) {
 		U4 xlen = READ_U2(start);
+#ifdef LIB_INFLATE_ERROR_ENABLED
 		if (xlen > len - 12) {
 			return LIB_INFLATE_DATA_ERROR;
 		}
+#endif
 		start += xlen + 2;
 	}
 
 	// Skip file name if present 
 	if (flg & FNAME) {
 		do {
+#ifdef LIB_INFLATE_ERROR_ENABLED
 			if (start - src >= len) {
 				return LIB_INFLATE_DATA_ERROR;
 			}
+#endif
 		} while (*start++);
 	}
 
 	// Skip file comment if present 
 	if (flg & FCOMMENT) {
 		do {
+#ifdef LIB_INFLATE_ERROR_ENABLED
 			if (start - src >= len) {
 				return LIB_INFLATE_DATA_ERROR;
 			}
+#endif
 		} while (*start++);
 	}
 
@@ -698,9 +773,11 @@ lib_inflate_error_code lib_inflate_gzip_uncompress(
 #ifdef LIB_INFLATE_CRC_ENABLED
 		U4 hcrc;
 #endif
+#ifdef LIB_INFLATE_ERROR_ENABLED
 		if (start - src > len - 2) {
 			return LIB_INFLATE_DATA_ERROR;
 		}
+#endif
 #ifdef LIB_INFLATE_CRC_ENABLED
 		hcrc = READ_U2(start);
 		if (hcrc != (lib_crc32(src, start - src) & 0x0000FFFF)) {
@@ -711,29 +788,36 @@ lib_inflate_error_code lib_inflate_gzip_uncompress(
 	}
 
 	// -- Get decompressed length -- 
+#if defined(LIB_INFLATE_ERROR_ENABLED) || defined(LIB_INFLATE_CRC_ENABLED)
 	dlen = READ_U4(&src[len - 4]);
+#endif
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	if (dlen > *pLen) {
 		return LIB_INFLATE_BUF_ERROR;
 	}
-
+#endif
 #ifdef LIB_INFLATE_CRC_ENABLED
 	// -- Get CRC32 checksum of original data -- 
 	crc32 = READ_U4(&src[len - 8]);
 #endif
 
+#ifdef LIB_INFLATE_ERROR_ENABLED
 	// -- Decompress data -- 
 	if ((src + len) - start < 8) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
-	res = lib_inflate_uncompress(dst, pLen, start,
+	res = 
+#endif
+	lib_inflate_uncompress(dst, pLen, start,
 	                      (src + len) - start - 8);
-	if (res != SUCCESS) {
+#ifdef LIB_INFLATE_ERROR_ENABLED
+	if (res != LIB_INFLATE_DATA_SUCCESS) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
 	if (*pLen != dlen) {
 		return LIB_INFLATE_DATA_ERROR;
 	}
-
+#endif
 #ifdef LIB_INFLATE_CRC_ENABLED
 	// -- Check CRC32 checksum -- 
 	if (crc32 != lib_crc32(dst, dlen)) {
@@ -741,7 +825,7 @@ lib_inflate_error_code lib_inflate_gzip_uncompress(
 	}
 #endif
 
-	return SUCCESS;
+	return LIB_INFLATE_SUCCESS;
 }
 
 U4 lib_inflate_gzip_size(const void *pSrc, U4 len) {
